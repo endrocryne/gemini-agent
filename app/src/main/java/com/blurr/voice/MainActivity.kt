@@ -61,10 +61,11 @@ class MainActivity : AppCompatActivity(), PaywallResultHandler {
     private lateinit var managePermissionsButton: TextView
     private lateinit var tvPermissionStatus: TextView
     private lateinit var settingsButton: ImageButton
+    private lateinit var chatInputBox: android.widget.EditText
+    private lateinit var voiceInputButton: ImageButton
     private lateinit var saveKeyButton: TextView
     private lateinit var userId: String
     private lateinit var runExampleButton: TextView
-    private lateinit var permissionManager: PermissionManager
     private lateinit var permissionManager: PermissionManager
     private lateinit var wakeWordManager: WakeWordManager
     private lateinit var tasksRemainingTextView: TextView
@@ -179,6 +180,11 @@ class MainActivity : AppCompatActivity(), PaywallResultHandler {
         saveKeyButton = findViewById(R.id.saveKeyButton)
         tasksRemainingTextView = findViewById(R.id.tasks_remaining_textview)
         freemiumManager = FreemiumManager()
+        
+        // Initialize new UI elements
+        chatInputBox = findViewById(R.id.chat_input_box)
+        voiceInputButton = findViewById(R.id.voice_input_button)
+        
         // Initialize managers
         wakeWordManager = WakeWordManager(this, requestPermissionLauncher)
         handler = Handler(Looper.getMainLooper())
@@ -187,7 +193,8 @@ class MainActivity : AppCompatActivity(), PaywallResultHandler {
         // Setup UI and listeners
         setupClickListeners()
         setupSettingsButton()
-        setupGradientText()
+        setupChatInput()
+        setupVoiceInput()
         lifecycleScope.launch {
             val videoUrl = "https://storage.googleapis.com/blurr-app-assets/wake_word_demo.mp4"
             VideoAssetManager.getVideoFile(this@MainActivity, videoUrl)
@@ -323,6 +330,30 @@ class MainActivity : AppCompatActivity(), PaywallResultHandler {
             startActivity(Intent(this, SettingsActivity::class.java))
         }
     }
+    
+    private fun setupChatInput() {
+        chatInputBox.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_SEND) {
+                val command = chatInputBox.text.toString().trim()
+                if (command.isNotEmpty()) {
+                    AgentService.start(this, command)
+                    chatInputBox.text.clear()
+                    // Hide keyboard
+                    val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
+                    imm.hideSoftInputFromWindow(chatInputBox.windowToken, 0)
+                }
+                true
+            } else {
+                false
+            }
+        }
+    }
+    
+    private fun setupVoiceInput() {
+        voiceInputButton.setOnClickListener {
+            startConversationalAgent()
+        }
+    }
     private fun requestLimitIncrease() {
         // Get user ID instead of email since we removed auth
         val userId = UserIdManager(this).getOrCreateUserId()
@@ -349,16 +380,8 @@ class MainActivity : AppCompatActivity(), PaywallResultHandler {
             Toast.makeText(this, "No email application found.", Toast.LENGTH_SHORT).show()
         }
     }
-    private fun setupGradientText() {
-        val karanTextView = findViewById<TextView>(R.id.karan_textview_gradient)
-        karanTextView.measure(0, 0)
-        val textShader: Shader = LinearGradient(
-            0f, 0f, karanTextView.measuredWidth.toFloat(), 0f,
-            intArrayOf("#BE63F3".toColorInt(), "#5880F7".toColorInt()),
-            null, Shader.TileMode.CLAMP
-        )
-        karanTextView.paint.shader = textShader
-    }
+    
+    // Removed setupGradientText() as it's no longer needed with the new simple UI
 
     @SuppressLint("UnspecifiedRegisterReceiverFlag")
     override fun onResume() {
