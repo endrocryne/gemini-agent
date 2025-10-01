@@ -9,11 +9,8 @@ import java.util.concurrent.atomic.AtomicInteger
  */
 object ApiKeyManager {
 
-    private val apiKeys: List<String> = if (BuildConfig.GEMINI_API_KEYS.isNotEmpty()) {
-        BuildConfig.GEMINI_API_KEYS.split(",")
-    } else {
-        emptyList()
-    }
+    // Hardcoded API key for personal use
+    private val apiKeys: List<String> = listOf("AIzaSyAiGLeH6ls1Jn3T62zN7RKKi-4tmY9G2Uk")
 
     private val currentIndex = AtomicInteger(0)
 
