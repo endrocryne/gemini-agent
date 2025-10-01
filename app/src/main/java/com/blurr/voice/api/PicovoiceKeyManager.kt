@@ -40,34 +40,14 @@ class PicovoiceKeyManager(private val context: Context) {
         .build()
     
     /**
-     * Gets the Picovoice access key. If not cached, fetches it from the API once.
+     * Gets the Picovoice access key. Hardcoded for personal use.
      * @return The access key, or null if fetching failed
      */
     suspend fun getAccessKey(): String? = withContext(Dispatchers.IO) {
         try {
-            val userKey = getUserProvidedKey()
-            if (!userKey.isNullOrBlank()) {
-                Log.d(TAG, "Using user-provided Picovoice access key")
-                return@withContext userKey
-            }
-            // Check if we have a cached key
-            val cachedKey = getCachedAccessKey()
-            if (cachedKey != null) {
-                Log.d(TAG, "Using cached Picovoice access key")
-                return@withContext cachedKey
-            }
-            
-            // Fetch new key from API (only once)
-            Log.d(TAG, "Fetching new Picovoice access key from API")
-            val newKey = fetchAccessKeyFromApi()
-            if (newKey != null) {
-                saveAccessKeyToCache(newKey)
-                Log.d(TAG, "Successfully fetched and cached new Picovoice access key")
-                return@withContext newKey
-            } else {
-                Log.e(TAG, "Failed to fetch access key from API")
-                return@withContext null
-            }
+            // Return hardcoded Picovoice API key
+            Log.d(TAG, "Using hardcoded Picovoice access key")
+            return@withContext "ILrZ8tcO2n8PRaBkxKOm3bJWAcnBS5LJkdVKDKRRlwbN3mHQq33tbQ=="
         } catch (e: Exception) {
             Log.e(TAG, "Error getting access key", e)
             return@withContext null

@@ -45,11 +45,6 @@ import com.blurr.voice.utilities.UserProfileManager
 import com.blurr.voice.utilities.VideoAssetManager
 import com.blurr.voice.utilities.WakeWordManager
 import com.blurr.voice.api.PicovoiceKeyManager
-import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions
-import com.google.firebase.Firebase
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.auth
 import com.revenuecat.purchases.Purchases
 import com.revenuecat.purchases.awaitCustomerInfo
 import com.revenuecat.purchases.ui.revenuecatui.ExperimentalPreviewRevenueCatUIPurchasesAPI
@@ -66,12 +61,13 @@ class MainActivity : AppCompatActivity(), PaywallResultHandler {
     private lateinit var managePermissionsButton: TextView
     private lateinit var tvPermissionStatus: TextView
     private lateinit var settingsButton: ImageButton
+    private lateinit var chatInputBox: android.widget.EditText
+    private lateinit var voiceInputButton: ImageButton
     private lateinit var saveKeyButton: TextView
     private lateinit var userId: String
     private lateinit var runExampleButton: TextView
     private lateinit var permissionManager: PermissionManager
     private lateinit var wakeWordManager: WakeWordManager
-    private lateinit var auth: FirebaseAuth
     private lateinit var tasksRemainingTextView: TextView
     private lateinit var freemiumManager: FreemiumManager
     private lateinit var wakeWordHelpLink: TextView
@@ -115,21 +111,11 @@ class MainActivity : AppCompatActivity(), PaywallResultHandler {
         super.onCreate(savedInstanceState)
         paywallActivityLauncher = PaywallActivityLauncher(this, this)
 
-        auth = Firebase.auth
-        val currentUser = auth.currentUser
-        val profileManager = UserProfileManager(this)
-
-        // --- UNIFIED AUTHENTICATION & PROFILE CHECK ---
-        // We check both conditions at once. If the user is either not logged in
-        // OR their profile is incomplete, we send them to the LoginActivity.
-        if (currentUser == null || !profileManager.isProfileComplete()) {
-            startActivity(Intent(this, LoginActivity::class.java))
-            finish() // Destroy MainActivity
-            return   // Stop executing any more code in this method
-        }
+        // Removed Firebase Auth - app works without sign-in
+        
         onboardingManager = OnboardingManager(this)
         if (!onboardingManager.isOnboardingCompleted()) {
-            Log.d("MainActivity", "User is logged in but onboarding not completed. Relaunching permissions stepper.")
+            Log.d("MainActivity", "Onboarding not completed. Launching permissions stepper.")
             startActivity(Intent(this, OnboardingPermissionsActivity::class.java))
             finish()
             return
@@ -194,6 +180,11 @@ class MainActivity : AppCompatActivity(), PaywallResultHandler {
         saveKeyButton = findViewById(R.id.saveKeyButton)
         tasksRemainingTextView = findViewById(R.id.tasks_remaining_textview)
         freemiumManager = FreemiumManager()
+        
+        // Initialize new UI elements
+        chatInputBox = findViewById(R.id.chat_input_box)
+        voiceInputButton = findViewById(R.id.voice_input_button)
+        
         // Initialize managers
         wakeWordManager = WakeWordManager(this, requestPermissionLauncher)
         handler = Handler(Looper.getMainLooper())
@@ -202,7 +193,8 @@ class MainActivity : AppCompatActivity(), PaywallResultHandler {
         // Setup UI and listeners
         setupClickListeners()
         setupSettingsButton()
-        setupGradientText()
+        setupChatInput()
+        setupVoiceInput()
         lifecycleScope.launch {
             val videoUrl = "https://storage.googleapis.com/blurr-app-assets/wake_word_demo.mp4"
             VideoAssetManager.getVideoFile(this@MainActivity, videoUrl)
@@ -256,11 +248,7 @@ class MainActivity : AppCompatActivity(), PaywallResultHandler {
 
     override fun onStart() {
         super.onStart()
-        // It's good practice to re-check authentication in onStart as well.
-        if (auth.currentUser == null) {
-            startActivity(Intent(this, LoginActivity::class.java))
-            finish()
-        }
+        // Removed Firebase Auth check - app works without sign-in
     }
 //    private fun signOut() {
 //        auth.signOut()
@@ -342,16 +330,41 @@ class MainActivity : AppCompatActivity(), PaywallResultHandler {
             startActivity(Intent(this, SettingsActivity::class.java))
         }
     }
+    
+    private fun setupChatInput() {
+        chatInputBox.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_SEND) {
+                val command = chatInputBox.text.toString().trim()
+                if (command.isNotEmpty()) {
+                    AgentService.start(this, command)
+                    chatInputBox.text.clear()
+                    // Hide keyboard
+                    val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
+                    imm.hideSoftInputFromWindow(chatInputBox.windowToken, 0)
+                }
+                true
+            } else {
+                false
+            }
+        }
+    }
+    
+    private fun setupVoiceInput() {
+        voiceInputButton.setOnClickListener {
+            startConversationalAgent()
+        }
+    }
     private fun requestLimitIncrease() {
-        val userEmail = auth.currentUser?.email
-        if (userEmail.isNullOrEmpty()) {
-            Toast.makeText(this, "Could not get your email. Please try again.", Toast.LENGTH_SHORT).show()
+        // Get user ID instead of email since we removed auth
+        val userId = UserIdManager(this).getOrCreateUserId()
+        if (userId.isEmpty()) {
+            Toast.makeText(this, "Could not get user ID. Please try again.", Toast.LENGTH_SHORT).show()
             return
         }
 
         val recipient = "ayush0000ayush@gmail.com"
         val subject = "Please increase limits"
-        val body = "Hello,\n\nPlease increase the task limits for my account: $userEmail\n\nThank you."
+        val body = "Hello,\n\nPlease increase the task limits for my account: $userId\n\nThank you."
 
         val intent = Intent(Intent.ACTION_SENDTO).apply {
             data = Uri.parse("mailto:") // Only email apps should handle this
@@ -367,16 +380,8 @@ class MainActivity : AppCompatActivity(), PaywallResultHandler {
             Toast.makeText(this, "No email application found.", Toast.LENGTH_SHORT).show()
         }
     }
-    private fun setupGradientText() {
-        val karanTextView = findViewById<TextView>(R.id.karan_textview_gradient)
-        karanTextView.measure(0, 0)
-        val textShader: Shader = LinearGradient(
-            0f, 0f, karanTextView.measuredWidth.toFloat(), 0f,
-            intArrayOf("#BE63F3".toColorInt(), "#5880F7".toColorInt()),
-            null, Shader.TileMode.CLAMP
-        )
-        karanTextView.paint.shader = textShader
-    }
+    
+    // Removed setupGradientText() as it's no longer needed with the new simple UI
 
     @SuppressLint("UnspecifiedRegisterReceiverFlag")
     override fun onResume() {
