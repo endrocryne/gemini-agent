@@ -110,6 +110,10 @@ class SettingsActivity : AppCompatActivity() {
         editUserEmail = findViewById(R.id.editUserEmail)
         textGetPicovoiceKeyLink = findViewById(R.id.textGetPicovoiceKeyLink) // NEW: Initialize the TextView
 
+        // Setup triggers button to navigate to Triggers activity
+        findViewById<TextView>(R.id.triggersButton).setOnClickListener {
+            startActivity(Intent(this, com.blurr.voice.triggers.ui.TriggersActivity::class.java))
+        }
 
         setupClickListeners()
         setupVoicePicker()
